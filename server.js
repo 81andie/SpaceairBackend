@@ -4,12 +4,14 @@ const cors = require("cors");
 const app = express();
 app.use(cors());
 
+const PORT = process.env.PORT || 3000;
+
 // -------------------------
-// CACHE SIMPLE
+// CACHE GLOBAL
 // -------------------------
 let cache = null;
 let lastUpdate = 0;
-const CACHE_TIME = 5 * 60 * 1000; // 5 minutos
+const CACHE_TIME = 5 * 60 * 1000; // 5 min
 
 // -------------------------
 // ROOT
@@ -19,66 +21,59 @@ app.get("/", (req, res) => {
 });
 
 // -------------------------
-// STATES (OpenSky)
+// STATES
 // -------------------------
 app.get("/states", async (req, res) => {
   try {
-    console.log("🚀 /states called");
-
     const now = Date.now();
 
-    // 🔥 cache
+    // 🔥 1. cache primero
     if (cache && now - lastUpdate < CACHE_TIME) {
-      console.log("⚡ Returning cache");
+      console.log("⚡ CACHE HIT");
       return res.json(cache);
     }
 
-    console.log("🌍 Fetching OpenSky API...");
+    console.log("🌍 Fetch OpenSky...");
 
-    const response = await fetch("https://opensky-network.org/api/states/all", {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
+    const response = await fetch(
+      "https://opensky-network.org/api/states/all",
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Accept": "application/json"
+        }
       }
-    });
-
-    console.log("📡 Status:", response.status);
-
-    if (!response.ok) {
-      throw new Error("OpenSky response not OK");
-    }
+    );
 
     const data = await response.json();
 
-    if (!data || !data.states) {
-      throw new Error("Invalid OpenSky data");
+    // 🔥 2. validación
+    if (data && data.states) {
+      cache = data;
+      lastUpdate = now;
+
+      console.log("💾 CACHE UPDATED");
+
+      return res.json(data);
     }
 
-    // 💾 guardar cache
-    cache = data;
-    lastUpdate = now;
-
-    console.log("💾 Cache updated");
-
-    return res.json(data);
+    throw new Error("Invalid OpenSky response");
 
   } catch (err) {
-    console.log("❌ OpenSky error:", err.message);
+    console.log("⚠️ OpenSky failed, using fallback");
 
-    // fallback seguro
+    // 🔥 3. fallback seguro
     return res.json(cache || {
       states: [],
-      error: true,
-      message: "OpenSky unavailable"
+      fallback: true,
+      message: "OpenSky temporarily unavailable"
     });
   }
 });
 
 // -------------------------
-// START SERVER (IMPORTANTE PARA RENDER)
+// START
 // -------------------------
-const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
