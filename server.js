@@ -7,8 +7,8 @@ app.use(cors());
 const PORT = process.env.PORT || 3000;
 
 // TEST ROOT
-app.get("/", (req, res) => {
-  res.send("🚀 Backend SpaceAir funcionando");
+app.get("/", (req, res) => {     
+  res.send("🚀 Backend SpaceAir funcionando bien");
 });
 
 // STATES
