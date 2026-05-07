@@ -1,6 +1,6 @@
 app.get("/states", async (req, res) => {
   try {
-    console.log("🌍 Fetching OpenSky...");
+    console.log("🌍 Fetching OpenSky, probando...");
 
     const response = await fetch("https://opensky-network.org/api/states/all", {
       method: "GET",
