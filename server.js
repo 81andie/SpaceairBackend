@@ -7,67 +7,107 @@ app.use(cors());
 const PORT = process.env.PORT || 3000;
 
 // -------------------------
-// CACHE GLOBAL
+// “BASE DE DATOS” EN MEMORIA
 // -------------------------
 let cache = null;
 let lastUpdate = 0;
-const CACHE_TIME = 5 * 60 * 1000; // 5 min
+
+// -------------------------
+// DATASET INICIAL (FALLBACK REALISTA)
+// -------------------------
+const fallbackData = {
+  flights: [
+    {
+      icao24: "abc123",
+      callsign: "IBE123",
+      originCountry: "Spain",
+      latitude: 41.3,
+      longitude: 2.1,
+      altitude: 10000,
+      velocity: 250,
+      heading: 90
+    },
+    {
+      icao24: "def456",
+      callsign: "RYR456",
+      originCountry: "Ireland",
+      latitude: 40.4,
+      longitude: 3.7,
+      altitude: 11000,
+      velocity: 230,
+      heading: 120
+    }
+  ],
+  fallback: true
+};
 
 // -------------------------
 // ROOT
 // -------------------------
 app.get("/", (req, res) => {
-  res.send("🚀 Backend SpaceAir funcionando bien");
+  res.send("🚀 Backend SpaceAir funcionando");
 });
+
+// -------------------------
+// TRANSFORMACIÓN LIMPIA
+// -------------------------
+function mapStates(states) {
+  return states.map((s) => ({
+    icao24: s[0],
+    callsign: s[1]?.trim() || null,
+    originCountry: s[2],
+    timePosition: s[3],
+    longitude: s[5],
+    latitude: s[6],
+    altitude: s[7],
+    velocity: s[9],
+    heading: s[10],
+    category: s[17]
+  }));
+}
 
 // -------------------------
 // STATES
 // -------------------------
 app.get("/states", async (req, res) => {
   try {
-    const now = Date.now();
+    console.log("🌍 Trying OpenSky...");
 
-    // 🔥 1. cache primero
-    if (cache && now - lastUpdate < CACHE_TIME) {
-      console.log("⚡ CACHE HIT");
-      return res.json(cache);
-    }
-
-    console.log("🌍 Fetch OpenSky...");
-
-    const response = await fetch(
-      "https://opensky-network.org/api/states/all",
-      {
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-          "Accept": "application/json"
-        }
+    const response = await fetch("https://opensky-network.org/api/states/all", {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
       }
-    );
+    });
 
     const data = await response.json();
 
-    // 🔥 2. validación
-    if (data && data.states) {
-      cache = data;
-      lastUpdate = now;
+    if (data?.states) {
+      const transformed = {
+        flights: mapStates(data.states),
+        fallback: false
+      };
 
-      console.log("💾 CACHE UPDATED");
+      cache = transformed;
+      lastUpdate = Date.now();
 
-      return res.json(data);
+      console.log("💾 Live data cached");
+
+      return res.json(transformed);
     }
 
-    throw new Error("Invalid OpenSky response");
+    throw new Error("Invalid API response");
 
   } catch (err) {
-    console.log("⚠️ OpenSky failed, using fallback");
+    console.log("⚠️ OpenSky failed");
 
-    // 🔥 3. fallback seguro
-    return res.json(cache || {
-      states: [],
-      fallback: true,
-      message: "OpenSky temporarily unavailable"
-    });
+    // 1. cache si existe
+    if (cache) {
+      return res.json(cache);
+    }
+
+    // 2. fallback inicial
+    return res.json(fallbackData);
   }
 });
 
