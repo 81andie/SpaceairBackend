@@ -7,107 +7,78 @@ app.use(cors());
 const PORT = process.env.PORT || 3000;
 
 // -------------------------
-// “BASE DE DATOS” EN MEMORIA
+// CACHE SIMPLE
 // -------------------------
-let cache = null;
-let lastUpdate = 0;
-
-// -------------------------
-// DATASET INICIAL (FALLBACK REALISTA)
-// -------------------------
-const fallbackData = {
-  flights: [
-    {
-      icao24: "abc123",
-      callsign: "IBE123",
-      originCountry: "Spain",
-      latitude: 41.3,
-      longitude: 2.1,
-      altitude: 10000,
-      velocity: 250,
-      heading: 90
-    },
-    {
-      icao24: "def456",
-      callsign: "RYR456",
-      originCountry: "Ireland",
-      latitude: 40.4,
-      longitude: 3.7,
-      altitude: 11000,
-      velocity: 230,
-      heading: 120
-    }
-  ],
-  fallback: true
+let cacheStore = {
+  data: null,
+  time: 0
 };
 
-// -------------------------
-// ROOT
-// -------------------------
-app.get("/", (req, res) => {
-  res.send("🚀 Backend SpaceAir funcionando");
-});
+const CACHE_DURATION = 30 * 1000;
 
 // -------------------------
-// TRANSFORMACIÓN LIMPIA
+// MAPEO LIMPIO
 // -------------------------
-function mapStates(states) {
-  return states.map((s) => ({
-    icao24: s[0],
-    callsign: s[1]?.trim() || null,
-    originCountry: s[2],
-    timePosition: s[3],
-    longitude: s[5],
-    latitude: s[6],
-    altitude: s[7],
-    velocity: s[9],
-    heading: s[10],
-    category: s[17]
+function mapFlights(ac) {
+  return ac.map((f) => ({
+    icao24: f.hex,
+    callsign: f.flight?.trim() || null,
+    originCountry: f.r || "Unknown",
+    latitude: f.lat,
+    longitude: f.lon,
+    altitude: f.alt_baro,
+    velocity: f.gs,
+    heading: f.track
   }));
 }
 
 // -------------------------
-// STATES
+// ENDPOINT
 // -------------------------
 app.get("/states", async (req, res) => {
   try {
-    console.log("🌍 Trying OpenSky...");
+    const now = Date.now();
 
-    const response = await fetch("https://opensky-network.org/api/states/all", {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
-      }
-    });
+    // CACHE HIT
+    if (cacheStore.data && now - cacheStore.time < CACHE_DURATION) {
+      return res.json(cacheStore.data);
+    }
+
+    console.log("🌍 Fetch ADSB.lol...");
+
+    const response = await fetch(
+      "https://api.adsb.lol/v2/lat/41.3/lon/2.1/dist/200"
+    );
 
     const data = await response.json();
 
-    if (data?.states) {
-      const transformed = {
-        flights: mapStates(data.states),
-        fallback: false
-      };
-
-      cache = transformed;
-      lastUpdate = Date.now();
-
-      console.log("💾 Live data cached");
-
-      return res.json(transformed);
+    if (!data || !data.ac) {
+      throw new Error("Invalid ADSB response");
     }
 
-    throw new Error("Invalid API response");
+    const result = {
+      flights: mapFlights(data.ac),
+      fallback: false
+    };
+
+    // guardar cache
+    cacheStore = {
+      data: result,
+      time: now
+    };
+
+    return res.json(result);
 
   } catch (err) {
-    console.log("⚠️ OpenSky failed");
+    console.log("⚠️ Fallback activated");
 
-    // 1. cache si existe
-    if (cache) {
-      return res.json(cache);
-    }
-
-    // 2. fallback inicial
-    return res.json(fallbackData);
+    return res.json(
+      cacheStore.data || {
+        flights: [],
+        fallback: true,
+        message: "ADSB unavailable"
+      }
+    );
   }
 });
 
