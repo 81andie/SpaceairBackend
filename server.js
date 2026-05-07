@@ -4,45 +4,21 @@ import cors from "cors";
 const app = express();
 app.use(cors());
 
-let cache = null;
-let cacheTime = 0;
-const CACHE_DURATION = 30 * 1000;
+const PORT = 3000;
 
+// endpoint de prueba OpenSky
 app.get("/states", async (req, res) => {
   try {
-    const now = Date.now();
-
-    // 🔥 CACHE
-    if (cache && now - cacheTime < CACHE_DURATION) {
-      return res.json({
-        source: "cache",
-        ...cache
-      });
-    }
-
-    console.log("🌍 Fetching OpenSky...");
-
     const response = await fetch("https://opensky-network.org/api/states/all");
     const data = await response.json();
 
-    cache = data;
-    cacheTime = now;
-
-    return res.json({
-      source: "api",
-      ...data
-    });
-
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      error: true,
-      states: []
-    });
+    res.json(data);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "error fetching data" });
   }
 });
 
-app.listen(3000, () => {
-  console.log("🚀 Backend running on http://localhost:3000");
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
