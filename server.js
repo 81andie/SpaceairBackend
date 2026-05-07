@@ -1,27 +1,37 @@
-import express from "express";
-import cors from "cors";
-
-const app = express();
-app.use(cors());
-
-const PORT = process.env.PORT || 3000;
-
-// TEST ROOT
-app.get("/", (req, res) => {     
-  res.send("🚀 Backend SpaceAir funcionando bien");
-});
-
-// STATES
 app.get("/states", async (req, res) => {
   try {
-    const response = await fetch("https://opensky-network.org/api/states/all");
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: "OpenSky failed" });
-  }
-});
+    console.log("🌍 Fetching OpenSky...");
 
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+    const response = await fetch("https://opensky-network.org/api/states/all", {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/json"
+      }
+    });
+
+    console.log("📡 Status:", response.status);
+
+    if (!response.ok) {
+      throw new Error("OpenSky response not OK");
+    }
+
+    const data = await response.json();
+
+    if (!data || !data.states) {
+      throw new Error("Invalid OpenSky data");
+    }
+
+    res.json(data);
+
+  } catch (err) {
+    console.log("❌ OpenSky error:", err.message);
+
+    // fallback para no romper frontend
+    res.json({
+      states: [],
+      error: true,
+      message: "OpenSky unavailable"
+    });
+  }
 });
