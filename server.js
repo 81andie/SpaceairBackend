@@ -4,21 +4,24 @@ import cors from "cors";
 const app = express();
 app.use(cors());
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// endpoint de prueba OpenSky
+// TEST ROOT
+app.get("/", (req, res) => {
+  res.send("🚀 Backend SpaceAir funcionando");
+});
+
+// STATES
 app.get("/states", async (req, res) => {
   try {
     const response = await fetch("https://opensky-network.org/api/states/all");
     const data = await response.json();
-
     res.json(data);
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "error fetching data" });
+    res.status(500).json({ error: "OpenSky failed" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log("Server running on port", PORT);
 });
