@@ -44,7 +44,7 @@ app.get("/states", async (req, res) => {
       return res.json(cacheStore.data);
     }
 
-    console.log("🌍 Fetch ADSB.lol...");
+    console.log("Fetch ADSB.lol...");
 
     const response = await fetch(
       "https://api.adsb.lol/v2/lat/41.3/lon/2.1/dist/3500"
@@ -86,5 +86,5 @@ app.get("/states", async (req, res) => {
 // START
 // -------------------------
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(` Server running on port ${PORT}`);
 });
