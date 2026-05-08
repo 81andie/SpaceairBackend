@@ -47,7 +47,7 @@ app.get("/states", async (req, res) => {
     console.log("🌍 Fetch ADSB.lol...");
 
     const response = await fetch(
-      "https://api.adsb.lol/v2/lat/41.3/lon/2.1/dist/2000"
+      "https://api.adsb.lol/v2/lat/41.3/lon/2.1/dist/3500"
     );
 
     const data = await response.json();
