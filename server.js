@@ -57,7 +57,7 @@ app.get("/states", async (req, res) => {
     }
 
     const result = {
-      flights: mapFlights(data.ac.slice(0,10000)),
+      flights: mapFlights(data.ac.slice(0,5000)),
       fallback: false
     };
 
