@@ -47,7 +47,7 @@ app.get("/states", async (req, res) => {
     console.log("🌍 Fetch ADSB.lol...");
 
     const response = await fetch(
-      "https://api.adsb.lol/v2/aircraft"
+      "https://api.adsb.lol/v2/lat/41.3/lon/2.1/dist/2000"
     );
 
     const data = await response.json();
@@ -57,7 +57,7 @@ app.get("/states", async (req, res) => {
     }
 
     const result = {
-      flights: mapFlights(data.ac.slice(0,5000)),
+      flights: mapFlights(data.ac),
       fallback: false
     };
 
