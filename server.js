@@ -1,3 +1,7 @@
+
+/*//https://spaceairbackend.onrender.com/states?lat=1.3&lon=6.2&dist=10
+
+
 const express = require("express");
 const cors = require("cors");
 
@@ -87,4 +91,210 @@ app.get("/states", async (req, res) => {
 // -------------------------
 app.listen(PORT, () => {
   console.log(` Server running on port ${PORT}`);
+});*/
+
+
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
+
+app.use(cors());
+
+const PORT = process.env.PORT || 3000;
+
+// -------------------------
+// CACHE POR ZONA
+// -------------------------
+const cache = new Map();
+
+const CACHE_DURATION = 15 * 1000;
+
+// -------------------------
+// VALIDACIÓN
+// -------------------------
+function isValidNumber(value) {
+  return !isNaN(value) && isFinite(value);
+}
+
+// -------------------------
+// MAPEO VUELOS
+// -------------------------
+function mapFlights(ac) {
+
+  return ac.map((f) => ({
+
+    // IDENTIFICACIÓN
+    icao24: f.hex,
+
+    callsign: f.flight?.trim() || null,
+
+    originCountry: f.r || "Unknown",
+
+    registration: f.reg || null,
+
+    aircraft: f.t || null,
+
+    squawk: f.squawk || null,
+
+    // POSICIÓN
+    latitude: f.lat,
+
+    longitude: f.lon,
+
+    altitude: f.alt_baro,
+
+    heading: f.track,
+
+    velocity: f.gs,
+
+    verticalRate: f.baro_rate || 0,
+
+    // ESTADO
+    emergency: f.emergency || "none",
+
+    category: f.category || null,
+
+    seen: f.seen || null
+
+  }));
+}
+
+// -------------------------
+// ENDPOINT DINÁMICO
+// -------------------------
+app.get("/states", async (req, res) => {
+
+  try {
+
+    // -------------------------
+    // QUERY PARAMS
+    // -------------------------
+    const lat = parseFloat(req.query.lat);
+
+    const lon = parseFloat(req.query.lon);
+
+    const dist = parseFloat(req.query.dist || 120);
+
+    // -------------------------
+    // VALIDACIÓN
+    // -------------------------
+    if (
+      !isValidNumber(lat) ||
+      !isValidNumber(lon) ||
+      !isValidNumber(dist)
+    ) {
+      return res.status(400).json({
+        error: "Invalid params"
+      });
+    }
+
+    // -------------------------
+    // CACHE KEY
+    // -------------------------
+    const cacheKey = `${lat}-${lon}-${dist}`;
+
+    const cached = cache.get(cacheKey);
+
+    // -------------------------
+    // CACHE HIT
+    // -------------------------
+    if (
+      cached &&
+      Date.now() - cached.time < CACHE_DURATION
+    ) {
+
+      console.log("CACHE HIT");
+
+      return res.json(cached.data);
+
+    }
+
+    // -------------------------
+    // URL ADSB
+    // -------------------------
+    const url =
+      `https://api.adsb.lol/v2/lat/${lat}/lon/${lon}/dist/${dist}`;
+
+    console.log("FETCH:", url);
+
+    // -------------------------
+    // FETCH
+    // -------------------------
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error("ADSB fetch failed");
+    }
+
+    const data = await response.json();
+
+    if (!data || !data.ac) {
+      throw new Error("Invalid ADSB response");
+    }
+
+    // -------------------------
+    // RESULTADO
+    // -------------------------
+    const result = {
+
+      flights: mapFlights(data.ac),
+
+      meta: {
+
+        center: {
+          lat,
+          lon
+        },
+
+        dist,
+
+        total: data.ac.length
+
+      },
+
+      fallback: false
+
+    };
+
+    // -------------------------
+    // GUARDAR CACHE
+    // -------------------------
+    cache.set(cacheKey, {
+      data: result,
+      time: Date.now()
+    });
+
+    // -------------------------
+    // RESPONSE
+    // -------------------------
+    return res.json(result);
+
+  } catch (err) {
+
+    console.error(err);
+
+    return res.status(500).json({
+
+      flights: [],
+
+      fallback: true,
+
+      error: "Failed fetching flights"
+
+    });
+
+  }
+
+});
+
+// -------------------------
+// START
+// -------------------------
+app.listen(PORT, () => {
+
+  console.log(
+    `Server running on port ${PORT}`
+  );
+
 });
