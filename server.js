@@ -108,13 +108,16 @@ const PORT = process.env.PORT || 3000;
 // -------------------------
 const cache = new Map();
 
-const CACHE_DURATION = 15 * 1000;
+// 30 segundos
+const CACHE_DURATION = 30 * 1000;
 
 // -------------------------
 // VALIDACIÓN
 // -------------------------
 function isValidNumber(value) {
+
   return !isNaN(value) && isFinite(value);
+
 }
 
 // -------------------------
@@ -158,6 +161,7 @@ function mapFlights(ac) {
     seen: f.seen || null
 
   }));
+
 }
 
 // -------------------------
@@ -184,15 +188,26 @@ app.get("/states", async (req, res) => {
       !isValidNumber(lon) ||
       !isValidNumber(dist)
     ) {
+
       return res.status(400).json({
         error: "Invalid params"
       });
+
     }
+
+    // -------------------------
+    // REDONDEO COORDS
+    // EVITA MILLONES DE CACHES
+    // -------------------------
+    const roundedLat = Number(lat.toFixed(2));
+
+    const roundedLon = Number(lon.toFixed(2));
 
     // -------------------------
     // CACHE KEY
     // -------------------------
-    const cacheKey = `${lat}-${lon}-${dist}`;
+    const cacheKey =
+      `${roundedLat}-${roundedLon}-${dist}`;
 
     const cached = cache.get(cacheKey);
 
@@ -224,32 +239,43 @@ app.get("/states", async (req, res) => {
     const response = await fetch(url);
 
     if (!response.ok) {
+
       throw new Error("ADSB fetch failed");
+
     }
 
     const data = await response.json();
 
     if (!data || !data.ac) {
+
       throw new Error("Invalid ADSB response");
+
     }
+
+    // -------------------------
+    // MAP FLIGHTS
+    // -------------------------
+    const flights = mapFlights(data.ac);
 
     // -------------------------
     // RESULTADO
     // -------------------------
     const result = {
 
-      flights: mapFlights(data.ac),
+      flights,
 
       meta: {
 
         center: {
+
           lat,
           lon
+
         },
 
         dist,
 
-        total: data.ac.length
+        total: flights.length
 
       },
 
@@ -258,12 +284,19 @@ app.get("/states", async (req, res) => {
     };
 
     // -------------------------
-    // GUARDAR CACHE
+    // SOLO GUARDAR SI HAY DATOS
     // -------------------------
-    cache.set(cacheKey, {
-      data: result,
-      time: Date.now()
-    });
+    if (flights.length > 0) {
+
+      cache.set(cacheKey, {
+
+        data: result,
+
+        time: Date.now()
+
+      });
+
+    }
 
     // -------------------------
     // RESPONSE
@@ -274,6 +307,30 @@ app.get("/states", async (req, res) => {
 
     console.error(err);
 
+    // -------------------------
+    // FALLBACK:
+    // USAR ÚLTIMA CACHE VÁLIDA
+    // -------------------------
+    const latestCache =
+      [...cache.values()][0];
+
+    if (latestCache) {
+
+      console.log("USING FALLBACK CACHE");
+
+      return res.json({
+
+        ...latestCache.data,
+
+        fallback: true
+
+      });
+
+    }
+
+    // -------------------------
+    // SI NO HAY CACHE
+    // -------------------------
     return res.status(500).json({
 
       flights: [],
