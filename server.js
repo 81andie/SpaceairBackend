@@ -154,13 +154,33 @@ function mapFlights(ac) {
     verticalRate: f.baro_rate || 0,
 
     // ESTADO
+    emergencyStatus: getEmergencyStatus(f.squawk),
     emergency: f.emergency || "none",
     category: f.category || null,
-    seen: f.seen || null,
-    airline: f.airline || null,
-    op: f.op || null,
-    ownOp: f.ownOp || null
+    seen: f.seen || null
+  
   }));
+
+
+  function getEmergencyStatus (squawk){
+    if(!squawk) return 'normal';
+
+     switch (squawk) {
+
+    case "7700":
+      return "emergency";
+
+    case "7600":
+      return "radio_failure";
+
+    case "7500":
+      return "hijack";
+
+    default:
+      return "normal";
+
+  }
+  }
 
 }
 
