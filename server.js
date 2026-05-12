@@ -157,8 +157,10 @@ function mapFlights(ac) {
     emergency: f.emergency || "none",
 
     category: f.category || null,
-
-    seen: f.seen || null
+    seen: f.seen || null,
+    route: f.route || null,
+    from: f.from || null,
+    to: f.to || null,
 
   }));
 
