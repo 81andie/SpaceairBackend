@@ -159,7 +159,7 @@ function mapFlights(ac) {
     seen: f.seen || null,
     airline: f.airline,
     op: f.op,
-    ownOp: f.ownOp,
+    ownOp: f.ownOp
   }));
 
 }
