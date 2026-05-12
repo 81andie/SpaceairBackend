@@ -158,9 +158,9 @@ function mapFlights(ac) {
 
     category: f.category || null,
     seen: f.seen || null,
-    route: f.route || null,
-    from: f.from || null,
-    to: f.to || null,
+    airline: f.airline,
+    op: f.op,
+    ownOp: f.ownOp,
 
   }));
 
