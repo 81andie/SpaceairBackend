@@ -160,7 +160,6 @@ function mapFlights(ac) {
     airline: f.airline,
     op: f.op,
     ownOp: f.ownOp,
-
   }));
 
 }
