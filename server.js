@@ -157,9 +157,9 @@ function mapFlights(ac) {
     emergency: f.emergency || "none",
     category: f.category || null,
     seen: f.seen || null,
-    airline: f.airline,
-    op: f.op,
-    ownOp: f.ownOp
+    airline: f.airline || null,
+    op: f.op || null,
+    ownOp: f.ownOp || null
   }));
 
 }
