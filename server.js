@@ -155,7 +155,6 @@ function mapFlights(ac) {
 
     // ESTADO
     emergency: f.emergency || "none",
-
     category: f.category || null,
     seen: f.seen || null,
     airline: f.airline,
